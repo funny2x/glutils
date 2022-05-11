@@ -1,12 +1,13 @@
 package glutils
 
-import "github.com/go-gl/glfw/v3.2/glfw"
+import "github.com/go-gl/glfw/v3.3/glfw"
 
 var (
 	t0Value       float64       // Set the initial time to now
-	fpsFrameCount int = 0          // Set the initial FPS frame count to 0
+	fpsFrameCount int     = 0   // Set the initial FPS frame count to 0
 	fps           float64 = 0.0 // Set the initial FPS value to 0.0
 )
+
 func InitFPS() {
 	t0Value = glfw.GetTime()
 }

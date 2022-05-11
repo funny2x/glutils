@@ -1,10 +1,11 @@
 package glutils
 
-import "C"
+// import "C"
 import (
 	"fmt"
-	"github.com/go-gl/gl/v4.1-core/gl"
 	"strings"
+
+	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
 func BasicProgram(vertexShaderSource, fragmentShaderSource string) (uint32, error) {
@@ -66,14 +67,14 @@ func NewShader(vertFile, fragFile, geomFile string) (*Shader, error) {
 		return nil, err
 	}
 
-	return 	setupShader(p), nil
+	return setupShader(p), nil
 }
 
 func setupShader(program uint32) *Shader {
 	var (
 		c, b, s int32
-		i uint32
-		n uint8
+		i       uint32
+		n       uint8
 	)
 	b = 255
 	uniforms := make(map[string]int32)
@@ -98,8 +99,8 @@ func setupShader(program uint32) *Shader {
 	}
 
 	return &Shader{
-		Program: program,
-		Uniforms: uniforms,
+		Program:    program,
+		Uniforms:   uniforms,
 		Attributes: attributes,
 	}
 }
@@ -198,35 +199,34 @@ type Shader struct {
 	Attributes map[string]uint32
 }
 
-
 type VertexArray struct {
-	Data []float32
-	Indices []uint32
-	Stride int32
-	Normalized bool
-	DrawMode uint32
-	Attributes map[uint32]int32 //map attrib loc to size
+	Data          []float32
+	Indices       []uint32
+	Stride        int32
+	Normalized    bool
+	DrawMode      uint32
+	Attributes    map[uint32]int32 //map attrib loc to size
 	Vao, vbo, ebo uint32
 }
 
-func (v *VertexArray) Setup () {
+func (v *VertexArray) Setup() {
 	gl.GenVertexArrays(1, &v.Vao)
 	gl.GenBuffers(1, &v.vbo)
 
 	gl.BindVertexArray(v.Vao)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, v.vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, len(v.Data) * GL_FLOAT32_SIZE, gl.Ptr(v.Data), v.DrawMode)
+	gl.BufferData(gl.ARRAY_BUFFER, len(v.Data)*GL_FLOAT32_SIZE, gl.Ptr(v.Data), v.DrawMode)
 
 	if len(v.Indices) > 0 {
 		gl.GenBuffers(1, &v.ebo)
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, v.ebo)
-		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(v.Indices) * GL_FLOAT32_SIZE, gl.Ptr(v.Indices), v.DrawMode)
+		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(v.Indices)*GL_FLOAT32_SIZE, gl.Ptr(v.Indices), v.DrawMode)
 	}
 
 	i := 0
 	for loc, size := range v.Attributes {
-		gl.VertexAttribPointer(loc, size, gl.FLOAT, v.Normalized, v.Stride * GL_FLOAT32_SIZE, gl.PtrOffset(i * GL_FLOAT32_SIZE))
+		gl.VertexAttribPointer(loc, size, gl.FLOAT, v.Normalized, v.Stride*GL_FLOAT32_SIZE, gl.PtrOffset(i*GL_FLOAT32_SIZE))
 		gl.EnableVertexAttribArray(loc)
 		i += int(size)
 	}
