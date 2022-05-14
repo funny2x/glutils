@@ -3,44 +3,13 @@ package glutils
 // import "C"
 import (
 	"fmt"
-	"strings"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
 func BasicProgram(vertexShaderSource, fragmentShaderSource string) (uint32, error) {
-	vertexShader, err := compileShader(vertexShaderSource, gl.VERTEX_SHADER)
-	if err != nil {
-		return 0, err
-	}
-
-	fragmentShader, err := compileShader(fragmentShaderSource, gl.FRAGMENT_SHADER)
-	if err != nil {
-		return 0, err
-	}
-
-	program := gl.CreateProgram()
-
-	gl.AttachShader(program, vertexShader)
-	gl.AttachShader(program, fragmentShader)
-	gl.LinkProgram(program)
-
-	var status int32
-	gl.GetProgramiv(program, gl.LINK_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
-
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(log))
-
-		return 0, fmt.Errorf("failed to link program: %v", log)
-	}
-
-	gl.DeleteShader(vertexShader)
-	gl.DeleteShader(fragmentShader)
-
-	return program, nil
+	s, e := NewShaderObject(vertexShaderSource, fragmentShaderSource)
+	return s.ID, e
 }
 
 func NewShader(vertFile, fragFile, geomFile string) (*Shader, error) {
@@ -106,12 +75,12 @@ func setupShader(program uint32) *Shader {
 }
 
 func createProgram(v, f, g []byte) (uint32, error) {
-	vertex, err := compileShader(string(v)+"\x00", gl.VERTEX_SHADER)
+	vertex, err := generateCompileShader(string(v), gl.VERTEX_SHADER)
 	if err != nil {
 		return 0, err
 	}
 
-	frag, err := compileShader(string(f)+"\x00", gl.FRAGMENT_SHADER)
+	frag, err := generateCompileShader(string(f), gl.FRAGMENT_SHADER)
 	if err != nil {
 		return 0, err
 	}
@@ -119,7 +88,7 @@ func createProgram(v, f, g []byte) (uint32, error) {
 	var geom uint32
 	use_geom := false
 	if len(g) > 0 {
-		geom, err = compileShader(string(g)+"\x00", gl.GEOMETRY_SHADER)
+		geom, err = generateCompileShader(string(g), gl.GEOMETRY_SHADER)
 		use_geom = true
 		if err != nil {
 			return 0, err
@@ -140,29 +109,6 @@ func createProgram(v, f, g []byte) (uint32, error) {
 	return p, nil
 }
 
-func compileShader(source string, shaderType uint32) (uint32, error) {
-	shader := gl.CreateShader(shaderType)
-
-	csources, free := gl.Strs(source)
-	gl.ShaderSource(shader, 1, csources, nil)
-	free()
-	gl.CompileShader(shader)
-
-	var status int32
-	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
-
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
-
-		return 0, fmt.Errorf("failed to compile %v: %v", source, log)
-	}
-
-	return shader, nil
-}
-
 func deleteShader(p, s uint32) {
 	gl.DetachShader(p, s)
 	gl.DeleteShader(s)
@@ -178,19 +124,7 @@ func linkProgram(v, f, g uint32, use_geom bool) (uint32, error) {
 
 	gl.LinkProgram(program)
 	// check for program linking errors
-	var status int32
-	gl.GetProgramiv(program, gl.LINK_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
-
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(log))
-
-		return 0, fmt.Errorf("failed to link program: %v", log)
-	}
-
-	return program, nil
+	return program, checkCompileErrors(program)
 }
 
 type Shader struct {

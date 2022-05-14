@@ -1,129 +1,109 @@
 package glutils
 
-
 import (
-	"github.com/go-gl/mathgl/mgl32"
-	"math"
-	"github.com/go-gl/mathgl/mgl64"
+	"github.com/funny2x/mgl32"
 )
 
 const (
-	FORWARD = iota
+	YAW         = -90.0
+	PITCH       = 0.0
+	SPEED       = 2.5
+	SENSITIVITY = 0.1
+	ZOOM        = 45.0
+)
+
+type Camera_Movement int
+
+const (
+	FORWARD Camera_Movement = iota
 	BACKWARD
 	LEFT
 	RIGHT
 )
 
-const (
-	YAW        = -90.0
-	PITCH      = 0.0
-	SPEED      = 3.0
-	SENSITIVTY = 0.25
-	ZOOM       = 45.0
-)
-
-// Camera is the camera object maintaing the stae
-type Camera struct {
-	Position mgl32.Vec3
-	Front    mgl32.Vec3
-	Up       mgl32.Vec3
-	Right    mgl32.Vec3
-	WorldUp  mgl32.Vec3
+//
+type CameraObject struct {
+	Position mgl32.Vec3 //摄像头位置
+	Forward  mgl32.Vec3 //摄像头方向
+	Up       mgl32.Vec3 //摄像头垂直上方向
+	Right    mgl32.Vec3 //摄像头右方向
+	WorldUp  mgl32.Vec3 //正上方向
 
 	// Eular Angles
-	Yaw   float64
-	Pitch float64
+	Yaw   float32
+	Pitch float32
 
 	// Camera options
-	MovementSpeed    float64
-	MouseSensitivity float64
-	Zoom             float64
+	MovementSpeed    float32 //移动速度
+	MouseSensitivity float32 //鼠标灵敏度
+	Zoom             float32 //放缩
+
 }
 
-func NewCamera(position, up mgl32.Vec3, yaw, pitch float64) Camera {
-	c := Camera{
-		Position:         position,
+//GetCamera Camera的构造函数
+//pos=mgl32.Vec3{0.0,0.0,0.0}
+//默认
+//up=mgl32.Vec3{0.0,1.0,0.0}
+//yaw=YAW,pitch=PITCH float32
+func NewCameraObject(pos, up mgl32.Vec3, yaw, pitch float32) *CameraObject {
+	c := &CameraObject{
+		Position:         pos,
+		Forward:          mgl32.Vec3{0.0, 0.0, -1.0},
+		Up:               mgl32.Vec3{},
+		Right:            mgl32.Vec3{},
 		WorldUp:          up,
 		Yaw:              yaw,
 		Pitch:            pitch,
-		Front:            mgl32.Vec3{0.0, 0.0, -1.0},
 		MovementSpeed:    SPEED,
-		MouseSensitivity: SENSITIVTY,
+		MouseSensitivity: SENSITIVITY,
 		Zoom:             ZOOM,
 	}
 	c.updateCameraVectors()
 	return c
 }
 
-// Constructor with scalar values
-func NewCameraWithScalars(posX, posY, posZ, upX, upY, upZ float32,  yaw, pitch float64) Camera {
-	c := Camera{
-		Position:         mgl32.Vec3{posX, posY, posZ},
-		WorldUp:          mgl32.Vec3{upX, upY, upZ},
-		Yaw:              yaw,
-		Pitch:            pitch,
-		Front:            mgl32.Vec3{0.0, 0.0, -1.0},
-		MovementSpeed:    SPEED,
-		MouseSensitivity: SENSITIVTY,
-		Zoom:             ZOOM,
-	}
-	c.updateCameraVectors()
-	return c
+func (c *CameraObject) GetViewMatrix() mgl32.Mat4 {
+
+	return mgl32.LookAtV(c.Position, c.Position.Add(c.Forward), c.Up)
 }
 
-// GetViewMatrix returns the view natrix
-func (c *Camera) GetViewMatrix() mgl32.Mat4 {
-	eye := c.Position
-	center := c.Position.Add(c.Front)
-	up := c.Up
-	return mgl32.LookAt(
-		eye.X(), eye.Y(), eye.Z(),
-		center.X(), center.Y(), center.Z(),
-		up.X(), up.Y(), up.Z())
-}
-
-// Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
-func (c *Camera) ProcessKeyboard(direction int, deltaTime float64) {
-	velocity := float32(c.MovementSpeed * deltaTime)
-	if direction == FORWARD {
-		c.Position = c.Position.Add(c.Front.Mul(velocity))
-	}
-	if direction == BACKWARD {
-		c.Position = c.Position.Sub(c.Front.Mul(velocity))
-	}
-	if direction == LEFT {
+//ProcessKeyboard 对应键盘移动事件
+func (c *CameraObject) ProcessKeyboard(direction Camera_Movement, deltaTime float64) {
+	velocity := c.MovementSpeed * float32(deltaTime)
+	switch direction {
+	case FORWARD:
+		c.Position = c.Position.Add(c.Forward.Mul(velocity))
+	case BACKWARD:
+		c.Position = c.Position.Sub(c.Forward.Mul(velocity))
+	case LEFT:
 		c.Position = c.Position.Sub(c.Right.Mul(velocity))
-	}
-	if direction == RIGHT {
+	case RIGHT:
 		c.Position = c.Position.Add(c.Right.Mul(velocity))
 	}
 }
 
-// Processes input received from a mouse input system. Expects the offset value in both the x and y direction.
-func (c *Camera) ProcessMouseMovement(xoffset, yoffset float64, constrainPitch bool)  {
-	xoffset *= c.MouseSensitivity
-	yoffset *= c.MouseSensitivity
+//ProcessMouseMovement 对应鼠标移动事件
+func (c *CameraObject) ProcessMouseMovement(xoffset, yoffset float64, constrainPitch bool) {
+	xoffset *= float64(c.MouseSensitivity)
+	yoffset *= float64(c.MouseSensitivity)
 
-	c.Yaw += xoffset
-	c.Pitch += yoffset
+	c.Yaw += float32(xoffset)
+	c.Pitch += float32(yoffset)
 
-	// Make sure that when pitch is out of bounds, screen doesn't get flipped
 	if constrainPitch {
 		if c.Pitch > 89.0 {
 			c.Pitch = 89.0
-		}
-		if c.Pitch < -89.0 {
+		} else if c.Pitch < -89.0 {
 			c.Pitch = -89.0
 		}
 	}
-	// Update Front, Right and Up Vectors using the updated Eular angles
 	c.updateCameraVectors()
 }
 
-// Processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
-func (c *Camera) ProcessMouseScroll(yoffset float64) {
+//ProcessMouseScroll 对应鼠标滚轮事件
+func (c *CameraObject) ProcessMouseScroll(yoffset float64) {
 	if c.Zoom >= 1.0 && c.Zoom <= 45.0 {
-		c.Zoom -= yoffset
+		c.Zoom -= float32(yoffset)
 	}
 	if c.Zoom <= 1.0 {
 		c.Zoom = 1.0
@@ -133,16 +113,17 @@ func (c *Camera) ProcessMouseScroll(yoffset float64) {
 	}
 }
 
-func (c *Camera) updateCameraVectors() {
+// updateCameraVectors 更新摄像机对应的向量
+func (c *CameraObject) updateCameraVectors() {
 
-	x := float32(math.Cos(mgl64.DegToRad(c.Yaw)) * math.Cos(mgl64.DegToRad(c.Pitch)))
-	y := float32(math.Sin(mgl64.DegToRad(c.Pitch)))
-	z := float32(math.Sin(mgl64.DegToRad(c.Yaw)) * math.Cos(mgl64.DegToRad(c.Pitch)))
-	front := mgl32.Vec3{x, y, z}
-	front = front.Normalize()
+	x := mgl32.Cos(mgl32.DegToRad(c.Yaw)) * mgl32.Cos(mgl32.DegToRad(c.Pitch))
+	y := mgl32.Sin(mgl32.DegToRad(c.Pitch))
+	z := mgl32.Sin(mgl32.DegToRad(c.Yaw)) * mgl32.Cos(mgl32.DegToRad(c.Pitch))
+
+	var front = mgl32.Vec3{x, y, z}
+	c.Forward = front.Normalize()
 	// Also re-calculate the Right and Up vector
 	// Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
-	c.Right = front.Cross(c.WorldUp).Normalize()
-	c.Up = c.Right.Cross(c.Front).Normalize()
+	c.Right = c.Forward.Cross(c.WorldUp).Normalize()
+	c.Up = c.Right.Cross(c.Forward).Normalize()
 }
-

@@ -12,8 +12,8 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/funny2x/mgl32"
 	"github.com/go-gl/gl/v4.1-core/gl"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/raedatoui/assimp"
 )
 
@@ -424,9 +424,15 @@ func (m *Model) loadMaterialTextures(ms *assimp.Material, tm assimp.TextureMappi
 
 func (m *Model) textureFromFile(f string) uint32 {
 	//Generate texture ID and load texture data
-	if tex, err := NewTexture(gl.REPEAT, gl.REPEAT, gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR, f); err != nil {
+	textureXXX := &TextureObject{}
+	var err = textureXXX.New(f, 0, gl.TEXTURE_2D)
+	if err != nil {
 		panic(err)
-	} else {
-		return tex
 	}
+	textureXXX.SetTexParamOptions(gl.REPEAT, gl.REPEAT, gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR)
+
+	if textureXXX.Init() != nil {
+		panic(err)
+	}
+	return textureXXX.ID
 }
